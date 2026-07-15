@@ -6,6 +6,14 @@ import {
   stages,
 } from "./gameData.js";
 
+const tutorialSeen = (() => {
+  try {
+    return localStorage.getItem("ltm-tutorial-seen") === "true";
+  } catch {
+    return false;
+  }
+})();
+
 const state = {
   screen: "map",
   checkpoint: 0,
@@ -30,7 +38,9 @@ const state = {
   pendingConfirm: null,
   rewardSummary: null,
   turnPlanCollapsed: false,
+  tutorialOpen: !tutorialSeen,
   feedbacks: [],
+  skillReadyShown: {},
   selectedAbilityTab: "attack",
   lastEffectSummary: [],
   priorityOrder: crewTemplates.map((unit) => unit.id),
@@ -63,6 +73,7 @@ function init() {
 }
 
 function render() {
+  updateSkillReadyNotices();
   window.__gameState = state;
   app.innerHTML = `
     <div class="shell">
@@ -81,6 +92,7 @@ function render() {
         ${state.screen === "battle" ? renderBattle() : ""}
         ${state.screen === "reward" ? renderRewardScreen() : ""}
       </main>
+      ${state.tutorialOpen ? renderTutorialOverlay() : ""}
     </div>
   `;
 
@@ -117,6 +129,7 @@ function renderMap() {
                     style="left:${stage.mapX}%; top:${stage.mapY}%"
                     ${index > state.unlockedStage ? "disabled" : ""}
                   >
+                    <span class="node-stage">${index === stages.length - 1 ? "Boss Stage" : `Stage ${index + 1}`}</span>
                     <span class="node-index">0${index + 1}</span>
                     <img class="node-icon" src="${stage.mapIcon}" alt="" />
                     <span class="node-name">${stage.name}</span>
@@ -213,14 +226,17 @@ function renderBattle() {
             ${renderAbilityPanel(planner)}
             <div class="action-grid">
               <button class="action-btn" data-action="select-command" data-command="attack">Attack</button>
-              <button class="action-btn" data-action="select-command" data-command="skill" ${planner.skill < planner.skillCost ? "disabled" : ""}>Skill</button>
+              <button class="action-btn skill-action-btn ${planner.skill >= planner.skillCost ? "is-ready" : ""}" data-action="select-command" data-command="skill" ${planner.skill < planner.skillCost ? "disabled" : ""}>
+                <span>Skill</span>
+                ${planner.skill >= planner.skillCost ? `<small>ready</small>` : ``}
+              </button>
               <button class="action-btn" data-action="open-item">Item</button>
               <button class="action-btn" data-action="select-command" data-command="defend">Defend</button>
             </div>
           `
               : `
             <div class="resolution-panel">
-              <p>All crew commands are locked in. Resolve the turn to watch the sequence play out.</p>
+              <p>All crew commands are locked in. Resolve the turn to watch the sequence play out, then plan the next round.</p>
               <button class="launch-btn" data-action="resolve-turn">Resolve Turn</button>
             </div>
           `
@@ -236,14 +252,121 @@ function renderBattle() {
 }
 
 function renderTopControls() {
+  const helpButton = `<button class="top-chip top-action help-btn" data-action="open-tutorial">Help</button>`;
   if (state.screen === "battle" && state.battle) {
+    const stageLabel = state.activeStage.index === stages.length - 1 ? "Boss Stage" : `Stage ${state.activeStage.index + 1}`;
+    const phaseLabel = state.activeHorde === 2 ? "Boss Encounter" : state.battle.phaseLabel;
     return `
+      ${helpButton}
+      <div class="top-chip stage-chip">${stageLabel} | ${state.activeStage.name} | ${phaseLabel}</div>
       <button class="top-chip top-action nav-btn" data-action="retreat-to-map">Return To Map</button>
       <button class="top-chip top-action restart-btn" data-action="reset-stage">Restart</button>
       <div class="top-chip scrap-chip">Scrap ${state.scrap}</div>
     `;
   }
+  if (state.screen === "map") {
+    return `
+      ${helpButton}
+      <div class="top-chip scrap-chip">Scrap ${state.scrap}</div>
+    `;
+  }
   return ``;
+}
+
+function renderTutorialOverlay() {
+  const selectedStage = stages[state.selectedStage];
+  const crewNotes = crewTemplates
+    .map((member) => `
+      <article class="tutorial-card tutorial-crew-card">
+        <div class="tutorial-card-head">
+          <img class="panel-icon" src="${member.skillIcon}" alt="" />
+          <strong>${member.name}</strong>
+        </div>
+        <p>${member.role}</p>
+        <small><strong>${member.skillName}:</strong> ${member.skillText}</small>
+      </article>
+    `)
+    .join("");
+
+  const itemNotes = Object.values(itemCatalog)
+    .map((item) => `
+      <article class="tutorial-card tutorial-item-card">
+        <div class="tutorial-card-head">
+          <img class="panel-icon" src="${item.icon}" alt="" />
+          <strong>${item.name}</strong>
+        </div>
+        <small>${item.desc}</small>
+      </article>
+    `)
+    .join("");
+
+  return `
+    <div class="tutorial-screen">
+      <div class="tutorial-modal hud-panel">
+        <div class="tutorial-header">
+          <div>
+            <p class="eyebrow">Mission Brief</p>
+            <h2>How To Play Last Train to Mars</h2>
+          </div>
+          <button class="icon-close" data-action="close-tutorial" aria-label="Close tutorial">&times;</button>
+        </div>
+        <div class="tutorial-grid">
+          <section class="tutorial-section">
+            <h3>Route Map</h3>
+            <p>Pick one stage node on the rail route to begin. Clear the current station to unlock the next one. Scrap is your currency for buying support items in the Supply Car.</p>
+            <div class="tutorial-callout">
+              <strong>Next stop:</strong>
+              <span>${selectedStage.name} - ${selectedStage.theme}</span>
+            </div>
+          </section>
+          <section class="tutorial-section">
+            <h3>Battle Flow</h3>
+            <ol class="tutorial-steps">
+              <li>Choose a target from the target row.</li>
+              <li>Press <code>Attack</code>, <code>Skill</code>, <code>Item</code>, or <code>Defend</code> for the highlighted crew member.</li>
+              <li>Repeat until every crew member has a command.</li>
+              <li>Press <code>Resolve Turn</code> to watch the round happen.</li>
+            </ol>
+          </section>
+          <section class="tutorial-section">
+            <h3>Command Console</h3>
+            <div class="tutorial-card-grid">
+              <article class="tutorial-card">
+                <strong>Attack</strong>
+                <small>Basic action. Deals damage and fills that unit's skill bar.</small>
+              </article>
+              <article class="tutorial-card">
+                <strong>Skill</strong>
+                <small>Each crew member's special move. It only works when the skill bar is full.</small>
+              </article>
+              <article class="tutorial-card">
+                <strong>Item</strong>
+                <small>Opens inventory so you can heal, buff, shield, or recharge a skill bar.</small>
+              </article>
+              <article class="tutorial-card">
+                <strong>Defend</strong>
+                <small>Reduces incoming damage for one round and gives a little skill charge.</small>
+              </article>
+            </div>
+          </section>
+          <section class="tutorial-section">
+            <h3>Crew Status</h3>
+            <p>Each crew block shows HP, skill charge, and status effects. A glowing block means that unit's skill is ready. Clicking a crew block lets you change only that unit's queued action.</p>
+            <div class="tutorial-card-grid">${crewNotes}</div>
+          </section>
+          <section class="tutorial-section">
+            <h3>Items and Win State</h3>
+            <p>Shop items make runs easier, especially when a stage gets harder. Win a battle by defeating all enemies in that encounter. Lose when all crew members are down.</p>
+            <div class="tutorial-card-grid">${itemNotes}</div>
+          </section>
+        </div>
+        <div class="tutorial-actions">
+          <button class="minor-btn nav-btn" data-action="close-tutorial">Close</button>
+          <button class="launch-btn" data-action="close-tutorial-forever">Start Mission</button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderConfirmScene() {
@@ -273,6 +396,19 @@ function renderFeedbacks() {
     `,
     )
     .join("");
+}
+
+function updateSkillReadyNotices() {
+  for (const member of state.crew) {
+    const isReady = member.hp > 0 && member.skill >= member.skillCost;
+    if (isReady && !state.skillReadyShown[member.id]) {
+      state.log.unshift(`${member.name}'s skill is ready.`);
+      state.skillReadyShown[member.id] = true;
+    }
+    if (!isReady) {
+      state.skillReadyShown[member.id] = false;
+    }
+  }
 }
 
 function renderLoseScreen() {
@@ -386,9 +522,15 @@ function renderAbilityPanel(planner) {
 
 function renderUnitSprite(unit, side) {
   const slot = getUnitSlot(unit.id, side);
+  const showSkillReady =
+    side === "crew" &&
+    unit.hp > 0 &&
+    typeof unit.skillCost === "number" &&
+    unit.skill >= unit.skillCost;
   return `
     <div class="unit-slot ${side} slot-${slot} ${unit.alive === false || unit.hp <= 0 ? "down" : ""}" data-unit="${unit.id}">
       <img class="sprite-frame ${side === "enemy" ? "flipped" : ""}" src="${getSpriteFrame(unit, side)}" alt="${unit.name}" data-sprite-id="${unit.id}" data-sprite-side="${side}" />
+      ${showSkillReady ? `<div class="skill-ready-badge">SKILL READY</div>` : ``}
       <div class="unit-tag ${side === "enemy" ? "enemy-tag" : "crew-sprite-tag"}">
         <span>${unit.name}</span>
         <strong>${Math.max(0, unit.hp)}/${unit.maxHp}</strong>
@@ -535,6 +677,24 @@ function handleAction(action, command, sourceButton) {
     render();
     return;
   }
+  if (action === "open-tutorial") {
+    state.tutorialOpen = true;
+    render();
+    return;
+  }
+  if (action === "close-tutorial") {
+    state.tutorialOpen = false;
+    render();
+    return;
+  }
+  if (action === "close-tutorial-forever") {
+    state.tutorialOpen = false;
+    try {
+      localStorage.setItem("ltm-tutorial-seen", "true");
+    } catch {}
+    render();
+    return;
+  }
   if (action === "edit-planner") {
     focusPlanner(sourceButton?.dataset.crewId ?? null);
     return;
@@ -634,6 +794,7 @@ function startStage(stageIndex) {
   state.itemMenuOpen = false;
   state.loseScreen = false;
   state.queuedActions = {};
+  state.skillReadyShown = {};
   state.log = [`Train docked at ${state.activeStage.name}. ${state.activeStage.theme}`];
   state.screen = "battle";
   syncPlannerSelection();
@@ -652,6 +813,7 @@ function resetCrewForStage() {
   state.priorityOrder = crewTemplates.map((unit) => unit.id);
   state.feedbacks = [];
   state.lastEffectSummary = [];
+  state.skillReadyShown = {};
 }
 
 function createBattleFromStage(stage, hordeIndex) {

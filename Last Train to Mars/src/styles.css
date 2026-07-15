@@ -293,6 +293,13 @@ p {
   text-shadow: none;
 }
 
+.node-stage {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  color: #203545;
+  line-height: 1;
+}
+
 .rail-node:hover:not(:disabled) {
   transform: translate(-50%, -54%);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34), 0 0 18px rgba(102, 228, 255, 0.22);
@@ -412,6 +419,10 @@ p {
 .shop-card h3 {
   font-size: 0.76rem;
   line-height: 1.15;
+}
+
+.help-btn {
+  color: #061018;
 }
 
 .shop-card-head {
@@ -555,6 +566,7 @@ p {
 }
 
 .unit-slot {
+  position: relative;
   display: grid;
   justify-items: center;
   align-items: start;
@@ -676,6 +688,28 @@ p {
   height: 20px;
   object-fit: contain;
   filter: brightness(0) saturate(100%) invert(8%) sepia(22%) saturate(889%) hue-rotate(156deg) brightness(92%) contrast(98%);
+}
+
+.stage-chip {
+  min-width: 300px;
+  text-align: center;
+}
+
+.skill-ready-badge {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 217, 125, 0.4);
+  border-radius: 999px;
+  background: rgba(35, 24, 6, 0.9);
+  color: #ffd97d;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0;
+  white-space: nowrap;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
 }
 
 .crew-info-panel {
@@ -1095,6 +1129,23 @@ p {
   border-color: rgba(7, 87, 111, 0.42);
 }
 
+.skill-action-btn {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+}
+
+.skill-action-btn small {
+  font-size: 0.62rem;
+  line-height: 1;
+  color: #203545;
+}
+
+.skill-action-btn.is-ready small {
+  color: #6a4300;
+}
+
 .launch-btn {
   background-color: #ffe3a6;
   border-color: rgba(117, 76, 13, 0.52);
@@ -1252,6 +1303,123 @@ p {
   color: #061018;
   text-align: center;
   font-size: 1rem;
+}
+
+.tutorial-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3, 7, 12, 0.74);
+  backdrop-filter: blur(5px);
+}
+
+.tutorial-modal {
+  width: min(1180px, calc(100vw - 40px));
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 231, 179, 0.96), rgba(19, 27, 38, 0.96) 18%, rgba(7, 11, 18, 0.98)),
+    url("../assets/ui-pack/png/extra/panel_glass.png");
+  background-size: 100% 100%;
+}
+
+.tutorial-header,
+.tutorial-actions,
+.tutorial-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tutorial-header {
+  margin-bottom: 14px;
+}
+
+.tutorial-header h2,
+.tutorial-section h3 {
+  font-family: var(--font-display);
+}
+
+.tutorial-header h2 {
+  font-size: 1.6rem;
+}
+
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tutorial-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(128, 203, 255, 0.2);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(245, 252, 255, 0.95), rgba(204, 230, 241, 0.82)),
+    url("../assets/ui-pack/png/extra/button_rectangle_depth.png");
+  background-size: 100% 100%;
+  color: #061018;
+  text-shadow: none;
+}
+
+.tutorial-section p,
+.tutorial-section li,
+.tutorial-section small,
+.tutorial-callout span {
+  color: #203545;
+  line-height: 1.45;
+}
+
+.tutorial-steps {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tutorial-callout {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(6, 16, 24, 0.08);
+  font-size: 0.84rem;
+}
+
+.tutorial-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tutorial-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(8, 28, 42, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.tutorial-card strong {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+}
+
+.tutorial-crew-card small,
+.tutorial-item-card small {
+  font-size: 0.74rem;
+}
+
+.tutorial-actions {
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .item-type-heal {
@@ -1578,6 +1746,11 @@ p {
 
   .item-popup {
     bottom: 238px;
+  }
+
+  .tutorial-grid,
+  .tutorial-card-grid {
+    grid-template-columns: 1fr;
   }
 }
 
